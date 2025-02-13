@@ -1,16 +1,47 @@
-# Front-running Attack Simulation with Hardhat
+# Vulnerabilidades em Contratos Inteligentes
 
-This repository contains a simplified demonstration of a front-running attack on the Ethereum network. We are using the [Hardhat](https://hardhat.org/) Ethereum development environment for this simulation.
+- MÓDULO 1
+    - AULA 1
+        
+        [Underflow/Overflow](https://hackernoon.com/hack-solidity-integer-overflow-and-underflow)
+        
+    - AULA 3
+        
+        [Hack da DAO](https://www.coindesk.com/consensus-magazine/2023/05/09/coindesk-turns-10-how-the-dao-hack-changed-ethereum-and-crypto/)
+        
+        [Reentrância](https://hackernoon.com/hack-solidity-reentrancy-attack) 
+        
+        [Reentrância](https://solidity-by-example.org/hacks/re-entrancy/) 
+        
+    - AULA 4
+        
+        [Como Mitigar Vulnerabilidades de Controle de Acesso](https://medium.com/rektify-ai/how-to-mitigate-access-control-vulnerability-6df74c82af98) 
+        
+        [Vulnerabilidades de Controle de Acesso em Contratos Inteligentes Solidity](https://www.immunebytes.com/blog/access-control-vulnerabilities-in-solidity-smart-contracts/)
+        
+        [Vulnerabilidades de Controle de Acesso](https://medium.com/ginger-security/access-control-vulnerabilities-in-solidity-smart-contracts-5e0871a00d77) 
+        
+    - AULA 5
+        
+        [Front Running](https://solidity-by-example.org/hacks/front-running/)
+        
+        [Simulação de Ataque Front-running com Hardhat](https://github.com/pedrosgmagalhaes/frontrunning_attack)
+        
+        [Como Resolver a Vulnerabilidade de Front-running em Contratos Inteligentes](https://hackernoon.com/how-to-solve-the-frontrunning-vulnerability-in-smart-contracts)
 
-## Overview
+# Simulação de Ataque Front-running com Hardhat
 
-In Ethereum, front-running is a type of attack where a malicious entity tries to benefit from seeing another person's transaction details before that transaction is confirmed. The attacker can then issue their own transaction with a higher gas price, making it more likely for miners to include the attacker's transaction in the next block, thus getting processed before the victim's transaction.
+Este repositório contém uma demonstração simplificada de um ataque de front-running na rede Ethereum. Estamos usando o ambiente de desenvolvimento Ethereum [Hardhat](https://hardhat.org/) para esta simulação.
 
-In our simulation, we consider a scenario where a malicious user front-runs a regular user's transaction to change a shared state in a contract, which prevents the regular user's transaction from being processed.
+## Visão Geral
 
-## Contract
+No Ethereum, front-running é um tipo de ataque em que uma entidade mal-intencionada tenta se beneficiar ao visualizar os detalhes de uma transação antes que ela seja confirmada. O invasor pode então emitir sua própria transação com um preço de gás mais alto, tornando mais provável que os mineradores incluam a transação do atacante no próximo bloco, sendo processada antes da transação da vítima.
 
-The contract `FrontRunningDemo` is quite simple:
+Nesta simulação, consideramos um cenário onde um usuário mal-intencionado antecipa a transação de um usuário comum para modificar um estado compartilhado em um contrato, impedindo a transação original de ser processada.
+
+## Contrato
+
+O contrato `FrontRunningDemo` é bastante simples:
 
 ```solidity
 // SPDX-License-Identifier: MIT
@@ -27,7 +58,7 @@ contract FrontRunningDemo {
     uint256 public state = 0;
 
     function submitTransaction(uint256 amount) external {
-        require(amount > state, "Amount must be larger than current state");
+        require(amount > state, "O valor deve ser maior que o estado atual");
 
         transactions.push(Transaction(msg.sender, amount));
         state = amount;
@@ -37,46 +68,42 @@ contract FrontRunningDemo {
         return transactions;
     }
 }
-
 ```
 
-It holds a state (a number) and allows users to submit a transaction that changes the state. However, any transaction with an amount smaller than or equal to the current state will be rejected.
+O contrato mantém um estado (um número) e permite que os usuários enviem uma transação que altera esse estado. No entanto, qualquer transação com um valor menor ou igual ao estado atual será rejeitada.
 
-## Test
-Our test simulates the attack scenario:
+## Teste
+Nosso teste simula o cenário do ataque:
 
 ```javascript
-it("should execute a front-running attack", async function () {
-    // User A prepares a transaction
+it("deve executar um ataque de front-running", async function () {
+    // Usuário A prepara uma transação
     const ownerAmount = ethers.utils.parseUnits("20", "ether");
 
-    // Attacker B observes User A's transaction and prepares their own transaction
+    // Atacante B observa a transação do Usuário A e prepara sua própria transação
     const attackerAmount = ethers.utils.parseUnits("100", "ether");
 
-    // Attacker B front-runs User A
+    // Atacante B antecipa a transação do Usuário A
     await frontRunningDemo.connect(attacker).submitTransaction(attackerAmount);
 
-    // User A submits their transaction, which should fail
+    // Usuário A envia sua transação, que deve falhar
     try {
         await frontRunningDemo.connect(owner).submitTransaction(ownerAmount);
-        throw new Error("Owner's transaction did not fail as expected");
+        throw new Error("A transação do proprietário não falhou como esperado");
     } catch (error) {
-        if (error.message.includes("Owner's transaction did not fail as expected")) {
+        if (error.message.includes("A transação do proprietário não falhou como esperado")) {
             throw error;
         } else {
-            console.log("Owner's transaction failed as expected");
+            console.log("A transação do proprietário falhou como esperado");
         }
     }
 
-    // Check order of transactions
+    // Verificar a ordem das transações
     const transactions = await frontRunningDemo.getTransactions();
     expect(transactions.length).to.equal(1);
-    expect(transactions[0].user).to.equal(attackerAddress); // Only attacker's transaction should have succeeded
+    expect(transactions[0].user).to.equal(attackerAddress); // Apenas a transação do atacante deve ter sido bem-sucedida
     expect(transactions[0].amount.toString()).to.equal(attackerAmount.toString());
 });
 ```
 
-It holds a state (a number) and allows users to submit a transaction that changes the state. However, any transaction with an amount smaller than or equal to the current state will be rejected.
-
-This test simulates a front-running attack in the Hardhat local environment. The attacker observes the regular user's transaction and front-runs it by submitting their own transaction first. The regular user's transaction fails as it doesn't meet the contract's requirement.
-
+Esse teste simula um ataque de front-running no ambiente local do Hardhat. O invasor observa a transação de um usuário comum e a antecipa enviando sua própria transação primeiro. A transação do usuário comum falha, pois não atende aos requisitos do contrato.
